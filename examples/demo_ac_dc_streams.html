@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helix AC/DC Streams Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        h2 {
+            color: #444;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+
+        .badge-ac {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .badge-dc {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 200px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #2196f3;
+            margin-top: 15px;
+        }
+
+        .info p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #eee;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .phase-viz {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .phase-circle {
+            width: 100px;
+            height: 100px;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            position: relative;
+            background: white;
+        }
+
+        .phase-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌀 Helix Temporal Adapter</h1>
+        <p class="subtitle">AC/DC Dual-Stream Temporal Processing Demo</p>
+
+        <!-- Input Section -->
+        <div class="section">
+            <h2>📝 Input Sequence</h2>
+            <div class="controls">
+                <button onclick="loadExample('parity')">Parity Task</button>
+                <button onclick="loadExample('adding')">Adding Task</button>
+                <button onclick="loadExample('copy')">Copy Task</button>
+                <button onclick="reset()">Reset</button>
+            </div>
+            <div class="controls">
+                <input type="text" id="inputSequence" placeholder="Enter sequence (e.g., 1,0,1,1,0)" />
+                <button onclick="processInput()">Process</button>
+                <button onclick="stepForward()">Step →</button>
+            </div>
+            <div class="info">
+                <p><strong>Current Step:</strong> <span id="currentStep">0</span> / <span id="totalSteps">0</span></p>
+                <p><strong>Current Input:</strong> <span id="currentValue">-</span></p>
+            </div>
+        </div>
+
+        <!-- AC Stream Section -->
+        <div class="section">
+            <h2><span class="badge badge-ac">AC</span> Fast Stream (Decay = 0.25)</h2>
+            <canvas id="acCanvas"></canvas>
+            <div class="info">
+                <p><strong>Purpose:</strong> Tracks events, changes, and deltas (fast decay)</p>
+                <p><strong>Current AC Norm:</strong> <span id="acNorm">0.000</span></p>
+            </div>
+        </div>
+
+        <!-- DC Stream Section -->
+        <div class="section">
+            <h2><span class="badge badge-dc">DC</span> Slow Stream (Decay = 0.98)</h2>
+            <canvas id="dcCanvas"></canvas>
+            <div class="info">
+                <p><strong>Purpose:</strong> Integrates context over time (slow decay)</p>
+                <p><strong>Current DC Norm:</strong> <span id="dcNorm">0.000</span></p>
+            </div>
+        </div>
+
+        <!-- Phase Coding Section -->
+        <div class="section">
+            <h2>🔄 Phase Coding</h2>
+            <div class="phase-viz">
+                <div class="phase-circle">
+                    <div class="phase-dot" id="phaseDot"></div>
+                </div>
+                <div>
+                    <p><strong>Position Encoding:</strong></p>
+                    <p>Sin: <span id="phaseSin">0.000</span></p>
+                    <p>Cos: <span id="phaseCos">1.000</span></p>
+                    <p>Progress: <span id="phaseProgress">0%</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Features Section -->
+        <div class="section">
+            <h2>📊 Final Feature Vector</h2>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-label">Last Projected</div>
+                    <div class="stat-value" id="lastProjected">0.00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Mean Projected</div>
+                    <div class="stat-value" id="meanProjected">0.00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Max Projected</div>
+                    <div class="stat-value" id="maxProjected">0.00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Cross-Frequency (AC × DC)</div>
+                    <div class="stat-value" id="crossFreq">0.00</div>
+                </div>
+            </div>
+            <div class="info" style="margin-top: 20px;">
+                <p><strong>Feature Composition:</strong> last_projected + mean_projected + max_projected + ac_state + dc_state + (ac × dc) + phase_code</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let sequence = [];
+        let currentStep = 0;
+        let acState = 0;
+        let dcState = 0;
+        let lastProjected = 0;
+        let meanProjected = 0;
+        let maxProjected = -Infinity;
+        let projectedSum = 0;
+        let stepCount = 0;
+
+        // Constants
+        const AC_DECAY = 0.25;
+        const DC_DECAY = 0.98;
+
+        // History for visualization
+        let acHistory = [];
+        let dcHistory = [];
+
+        // Canvas contexts
+        const acCanvas = document.getElementById('acCanvas');
+        const dcCanvas = document.getElementById('dcCanvas');
+        const acCtx = acCanvas.getContext('2d');
+        const dcCtx = dcCanvas.getContext('2d');
+
+        // Set canvas sizes
+        function resizeCanvases() {
+            acCanvas.width = acCanvas.offsetWidth;
+            acCanvas.height = acCanvas.offsetHeight;
+            dcCanvas.width = dcCanvas.offsetWidth;
+            dcCanvas.height = dcCanvas.offsetHeight;
+            drawCharts();
+        }
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+
+        // Load example sequences
+        function loadExample(type) {
+            switch(type) {
+                case 'parity':
+                    document.getElementById('inputSequence').value = '1,0,1,1,0,1,0,0';
+                    break;
+                case 'adding':
+                    document.getElementById('inputSequence').value = '0.5,0.3,0.8,0.2,0.6';
+                    break;
+                case 'copy':
+                    document.getElementById('inputSequence').value = '1,2,3,4,5';
+                    break;
+            }
+            processInput();
+        }
+
+        // Process input sequence
+        function processInput() {
+            const input = document.getElementById('inputSequence').value;
+            sequence = input.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+            
+            if (sequence.length === 0) {
+                alert('Please enter a valid sequence');
+                return;
+            }
+
+            reset();
+            document.getElementById('totalSteps').textContent = sequence.length;
+        }
+
+        // Reset state
+        function reset() {
+            currentStep = 0;
+            acState = 0;
+            dcState = 0;
+            lastProjected = 0;
+            meanProjected = 0;
+            maxProjected = -Infinity;
+            projectedSum = 0;
+            stepCount = 0;
+            acHistory = [];
+            dcHistory = [];
+            updateDisplay();
+            drawCharts();
+        }
+
+        // Step forward through sequence
+        function stepForward() {
+            if (currentStep >= sequence.length) {
+                alert('Sequence complete!');
+                return;
+            }
+
+            const input = sequence[currentStep];
+            
+            // Simulate projection (simplified)
+            const projected = Math.tanh(input);
+            
+            // Compute event (delta from last)
+            const event = projected - lastProjected;
+            
+            // Update AC state (fast decay)
+            acState = AC_DECAY * acState + (1 - AC_DECAY) * event;
+            
+            // Update DC state (slow decay, gated)
+            const writeGate = 0.7; // Simplified gate
+            const candidate = Math.tanh(projected + acState);
+            dcState = DC_DECAY * dcState + (1 - DC_DECAY) * writeGate * candidate;
+            
+            // Update trajectory stats
+            stepCount++;
+            lastProjected = projected;
+            projectedSum += projected;
+            meanProjected = projectedSum / stepCount;
+            maxProjected = Math.max(maxProjected, projected);
+            
+            // Store history
+            acHistory.push(acState);
+            dcHistory.push(dcState);
+            
+            currentStep++;
+            updateDisplay();
+            drawCharts();
+        }
+
+        // Update display
+        function updateDisplay() {
+            document.getElementById('currentStep').textContent = currentStep;
+            document.getElementById('currentValue').textContent = currentStep > 0 ? sequence[currentStep - 1].toFixed(3) : '-';
+            
+            document.getElementById('acNorm').textContent = Math.abs(acState).toFixed(3);
+            document.getElementById('dcNorm').textContent = Math.abs(dcState).toFixed(3);
+            
+            document.getElementById('lastProjected').textContent = lastProjected.toFixed(2);
+            document.getElementById('meanProjected').textContent = meanProjected.toFixed(2);
+            document.getElementById('maxProjected').textContent = (maxProjected === -Infinity ? 0 : maxProjected).toFixed(2);
+            document.getElementById('crossFreq').textContent = (acState * dcState).toFixed(2);
+            
+            // Update phase coding
+            if (sequence.length > 0) {
+                const progress = currentStep / sequence.length;
+                const angle = 2 * Math.PI * progress;
+                const sin = Math.sin(angle);
+                const cos = Math.cos(angle);
+                
+                document.getElementById('phaseSin').textContent = sin.toFixed(3);
+                document.getElementById('phaseCos').textContent = cos.toFixed(3);
+                document.getElementById('phaseProgress').textContent = (progress * 100).toFixed(0) + '%';
+                
+                // Update phase circle dot
+                const dot = document.getElementById('phaseDot');
+                const radius = 38; // Circle radius minus dot radius
+                const x = 50 + radius * cos;
+                const y = 50 - radius * sin;
+                dot.style.left = x + '%';
+                dot.style.top = y + '%';
+            }
+        }
+
+        // Draw charts
+        function drawCharts() {
+            drawChart(acCtx, acHistory, '#ff6b6b', 'AC Stream');
+            drawChart(dcCtx, dcHistory, '#4ecdc4', 'DC Stream');
+        }
+
+        function drawChart(ctx, data, color, label) {
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            
+            // Clear
+            ctx.clearRect(0, 0, width, height);
+            
+            if (data.length === 0) return;
+            
+            // Find range
+            const max = Math.max(...data.map(Math.abs), 0.1);
+            const min = -max;
+            const range = max - min;
+            
+            // Draw grid
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+            
+            // Draw line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            data.forEach((value, i) => {
+                const x = (i / Math.max(data.length - 1, 1)) * width;
+                const y = height - ((value - min) / range) * height;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Draw points
+            ctx.fillStyle = color;
+            data.forEach((value, i) => {
+                const x = (i / Math.max(data.length - 1, 1)) * width;
+                const y = height - ((value - min) / range) * height;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+    </script>
+</body>
+</html>
