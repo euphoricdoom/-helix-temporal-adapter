@@ -1,23 +1,12 @@
 # Helix Temporal Adapter
 
-Repository scaffold for extracting the Helix AC/DC temporal adapter from `project-512d`.
+AC/DC dual-stream temporal processing with learned gate adaptation.
 
-## Day 1 Scope
+## Installation
+(Coming Day 2)
 
-- Copy Helix-only source modules as-is.
-- Copy Helix-only tests as-is.
-- Preserve architecture notes.
-- Do not polish implementation yet.
+## Quick Start
+(Coming Day 2)
 
-## Package Layout
-
-```text
-helix/
-tests/
-docs/
-examples/
-```
-
-## Status
-
-Day 1: Repository Structure.
+## Documentation
+See `docs/ARCHITECTURE.md`
